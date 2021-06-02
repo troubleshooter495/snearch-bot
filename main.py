@@ -17,7 +17,7 @@ TOKEN = tok.token()
 bot = telebot.TeleBot(TOKEN, parse_mode=None)
 state = 0
 serverdb = interface.db.ServerDB('data/base',
-                                 lambda: np.random.randint(1,10) < 0)
+                                 lambda: np.random.randint(1, 10) < 4)
 Classy = interface.classifier.load_classifier('data/classifier.pt')
 userdb = interface.db.UserDB()
 ae = interface.autoencoder.load_model('data/model.pt')
@@ -48,17 +48,19 @@ def recommend(message):
         while not userdb.isok(user, imgpath):
             imgpath = serverdb.random_cat()
     else:
-        print('RECOMMENDED ONE')
-        paths, probs = hnsw.knn(list(userdb.getlikes(user)), 4)
-        imgpath = np.random.choice(paths, p=probs)
-        count = 0
-        while not userdb.isok(user, imgpath):
-            imgpath = np.random.choice(paths, p=probs)
-            if count == 20:
-                imgpath = serverdb.random_cat()
-                print('YOOOOO RANDOM ONE')
+        labels, dists = hnsw.knn(list(userdb.getlikes(user)), 5)
+        f = 1
+        for i in range(len(labels)):
+            if userdb.isok(user, labels[i]):
+                imgpath = labels[i]
+                f = 0
+                print(f'RECOMMENDED ONE i={i}')
                 break
-            count += 1
+
+        if f:
+            imgpath = serverdb.random_cat()
+            print('COULD NOT RECOMMEND')
+
 
     img = open(imgpath, 'rb')
     m = bot.send_photo(message.chat.id, img, reply_markup=gen_markup())

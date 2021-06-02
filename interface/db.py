@@ -7,6 +7,7 @@ class UserDB:
         self.user_disliked = dict()
         self.user_used = dict()
         self.user_sent = dict()
+        self.user_predict = dict()
 
     def add2liked(self, user, liked):
         if user not in self.user_liked:
@@ -27,6 +28,17 @@ class UserDB:
         if user not in self.user_sent:
             self.user_sent[user] = set()
         self.user_sent[user].add(img)
+
+    def add2predict(self, user, list_to_predict):
+        if user not in self.user_predict:
+            self.user_predict[user] = set()
+        for i in list_to_predict:
+            self.user_predict[user].add(i)
+
+    def predict(self, user):
+        if user not in self.user_predict or not self.user_predict[user]:
+            return None
+        return self.user_predict[user].pop()
 
     def deletefromliked(self, user, liked):
         try:

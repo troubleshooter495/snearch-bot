@@ -60,20 +60,18 @@ class Hnsw:
         p.add_items(data2)
 
         labels, distances = p.knn_query(encodlikes, k=n_top)
+        ls = []
+        dists = []
 
-        best_paths = ['' for i in range(labels.shape[0] * n_top)]
-        probs = np.empty(labels.shape[0] * n_top )
-        j = 0
         for i in range(labels.shape[0]):
-            for rec in range(n_top):
-                best_paths[j] = ppaths[labels[i][rec]]
-                probs[j] = distances[i][rec]
-                j += 1
-        for i in range(len(probs)):
-            probs[i] = 1 / probs[i] if probs[i] else 0
+            for j in range(n_top):
+                if labels[i][j] >= samples.shape[0]:
+                    continue
+                ls.append(ppaths[labels[i][j]])
+                dists.append(distances[i][j])
 
-        probs /= probs.sum()
-        return best_paths, probs
+        dists, ls = (list(t) for t in zip(*sorted(zip(dists, ls))))
+        return ls, dists
 
 # TESTING
 #
