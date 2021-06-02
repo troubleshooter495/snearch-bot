@@ -1,3 +1,3 @@
 # snearch-bot
 
-to be coontinued
+to be continued
