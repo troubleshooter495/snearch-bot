@@ -17,7 +17,7 @@ TOKEN = tok.token()
 bot = telebot.TeleBot(TOKEN, parse_mode=None)
 state = 0
 serverdb = interface.db.ServerDB('data/base',
-                                 lambda: np.random.randint(1, 10) < 4)
+                                 lambda: np.random.randint(1, 100) < 30)
 Classy = interface.classifier.load_classifier('data/classifier.pt')
 userdb = interface.db.UserDB()
 ae = interface.autoencoder.load_model('data/model.pt')
@@ -36,7 +36,9 @@ def send_welcome(message):
                  "Каждой присланной паре можно поставить реакцию. "
                  "Доступны следующие команды:\n"
                  "/recommend – увидеть рекоммендацию обуви от бота\n"
-                 "/send_photo – прислать фото понравившейся вам обуви\n")
+                 "/send_photo – прислать фото понравившейся вам обуви\n"
+                 "/reset – сбросить все предпочтения\n"
+                 "/help – помощь")
 
 
 @bot.message_handler(commands=['recommend'])
@@ -48,19 +50,22 @@ def recommend(message):
         while not userdb.isok(user, imgpath):
             imgpath = serverdb.random_cat()
     else:
-        labels, dists = hnsw.knn(list(userdb.getlikes(user)), 5)
-        f = 1
-        for i in range(len(labels)):
-            if userdb.isok(user, labels[i]):
-                imgpath = labels[i]
-                f = 0
-                print(f'RECOMMENDED ONE i={i}')
-                break
-
-        if f:
+        imgpath = userdb.predict(user)
+        if imgpath is None:
+            labels, _ = hnsw.knn(list(userdb.getlikes(user)), 5)
+            userdb.add2predict(user, labels)
+            imgpath = userdb.predict(user)
+            while not userdb.isok(user, imgpath):
+                imgpath = userdb.predict(user)
+                if imgpath is None:
+                    break
+        elif not userdb.isok(user, imgpath):
+            while imgpath is not None or not userdb.isok(user, imgpath):
+                imgpath = userdb.predict(user)
+        if imgpath is None:
             imgpath = serverdb.random_cat()
-            print('COULD NOT RECOMMEND')
-
+            while not userdb.isok(user, imgpath):
+                imgpath = serverdb.random_cat()
 
     img = open(imgpath, 'rb')
     m = bot.send_photo(message.chat.id, img, reply_markup=gen_markup())
@@ -74,6 +79,12 @@ def accept_photo(message):
     global state
     state = 1
     bot.reply_to(message, 'Теперь пришлите картинку')
+
+
+@bot.message_handler(commands=['reset'])
+def reset(message):
+    userdb.reset(message.from_user.id)
+    bot.reply_to(message, 'Все предпочтения сброшены')
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -109,6 +120,7 @@ def accept_photo(message):
 
     if int(pred):
         userdb.add2liked(message.from_user.id, imgpath)
+        userdb.add2used(message.from_user.id, imgpath)
         bot.reply_to(message, 'Картинка успешно сохранена!')
     else:
         bot.reply_to(message, 'Не удалось распознать обувь на картинке')

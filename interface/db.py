@@ -1,6 +1,7 @@
 import os
 from random import randint
 
+
 class UserDB:
     def __init__(self):
         self.user_liked = dict()
@@ -68,6 +69,13 @@ class UserDB:
 
     def getlikes(self, user):
         return self.user_liked[user] if user in self.user_liked else []
+
+    def reset(self, user):
+        self.user_liked[user] = set()
+        self.user_disliked[user] = set()
+        self.user_used[user] = set()
+        self.user_sent[user] = set()
+        self.user_predict[user] = set()
 
 
 class ServerDB:
